@@ -1,0 +1,25 @@
+﻿{
+    "name": "knockout.google.maps.clusterer",
+    "version": "0.1.0",
+    "author": "Manuel Guilbault (https://github.com/manuel-guilbault)",
+    "description": "Integration of Google Maps marker clusterer to knockout.google.maps.",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/manuel-guilbault/knockout.google.maps.clusterer/"
+    },
+    "keywords": [
+        "knockout",
+        "google",
+        "maps",
+		"clusterer"
+    ],
+    "devDependencies": {
+        "grunt": "~0.4.2",
+        "grunt-contrib-concat": "~0.1.2",
+        "grunt-contrib-uglify": "~0.2.2",
+        "grunt-contrib-jshint": "~0.6.3",
+        "grunt-contrib-jasmine": "~0.5.1",
+        "knockout": ">=2.0.0"
+    },
+    "license": "MIT"
+}
