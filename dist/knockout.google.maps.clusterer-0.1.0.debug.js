@@ -61,6 +61,11 @@ ko.bindingHandlers.clusterer = {
         return { controlsDescendantBindings: true };
     },
     binders: {
+        ignoreHidden: {
+            onBuildOptions: function (bindingContext, bindings, options, ko) {
+                ko.google.maps.utils.assignBindingToOptions(bindings, 'ignoreHidden', options, null);
+            }
+        },
         gridSize: {
             onBuildOptions: function (bindingContext, bindings, options, ko) {
                 ko.google.maps.utils.assignBindingToOptions(bindings, 'gridSize', options, null);
@@ -87,6 +92,11 @@ ko.bindingHandlers.clusterer = {
                     clusterer.resetViewport();
                     clusterer.redraw();
                 });
+            }
+        },
+        calculator: {
+            onBuildOptions: function (bindingContext, bindings, options, ko) {
+                ko.google.maps.utils.assignBindingToOptions(bindings, 'calculator', options, null);
             }
         }
     }
