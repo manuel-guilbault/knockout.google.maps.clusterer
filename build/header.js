@@ -12,4 +12,4 @@
         factory(ko, ko.validation = {});
     }
 }(function ( ko, exports ) {
-    if (typeof (ko) === undefined) { throw "Knockout is required, please ensure it is loaded before loading this plugin"; }
+    if (typeof (ko.google.maps) === undefined) { throw "knockout.google.maps is required, please ensure it is loaded before loading this plugin"; }
