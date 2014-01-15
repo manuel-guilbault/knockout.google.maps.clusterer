@@ -1,97 +1,96 @@
-﻿var defaultClustererName = '$clusterer';
+﻿(function () {
+    var defaultClustererName = '$clusterer';
 
-function getClusterer(bindings, bindingContext) {
-    var name = ko.utils.unwrapObservable(bindings.clusterer) || defaultClustererName;
-    return bindingContext[name];
-}
+    ko.bindingHandlers.clusterer = {
+        init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
+            if (bindingContext.$map === undefined) {
+                throw 'clusterer binding must be used only inside the scope of a map binding.';
+            }
 
-ko.bindingHandlers.clusterer = {
-    init: function (element, valueAccessor, allBindingsAccessor, viewModel, bindingContext) {
-        if (bindingContext.$map === undefined) {
-            throw 'clusterer binding must be used only inside the scope of a map binding.';
+            var bindings = ko.utils.unwrapObservable(valueAccessor());
+
+            var options = ko.google.maps.binder.getCreateOptions(bindingContext, bindings, ko.bindingHandlers.clusterer.binders);
+            var clusterer = new MarkerClusterer(bindingContext.$map, [], options);
+
+            var subscriptions = new ko.google.maps.Subscriptions();
+            ko.google.maps.binder.bind(bindingContext, bindings, clusterer, subscriptions, ko.bindingHandlers.clusterer.binders);
+
+            var name = ko.utils.unwrapObservable(bindings.name) || defaultClustererName;
+            var extension = {};
+            extension[name] = clusterer;
+            var childBindingContext = bindingContext.extend(extension);
+            ko.applyBindingsToDescendants(childBindingContext, element);
+
+            return { controlsDescendantBindings: true };
+        },
+        binders: {
+            ignoreHidden: {
+                createOptions: 'ignoreHidden'
+            },
+            gridSize: {
+                createOptions: 'gridSize',
+                bindings: { name: 'gridSize', vmToObj: { setter: 'setGridSize' } }
+            },
+            maxZoom: {
+                createOptions: 'maxZoom',
+                bindings: { name: 'maxZoom', vmToObj: { setter: 'setMaxZoom' } }
+            },
+            styles: {
+                createOptions: 'styles',
+                bindings: {
+                    name: 'styles',
+                    vmToObj: {
+                        setter: function (clusterer, styles) {
+                            clusterer.setStyles(styles);
+                            clusterer.resetViewport();
+                            clusterer.redraw();
+                        }
+                    }
+                }
+            },
+            calculator: {
+                createOptions: 'calculator'
+            }
+        }
+    };
+    ko.virtualElements.allowedBindings.clusterer = true;
+
+    function setClusterer(marker, newClusterer) {
+        var oldClusterer = ko.utils.domData.get(marker, 'clusterer');
+        if (oldClusterer) {
+            oldClusterer.removeMarker(marker);
         }
 
-        var bindings = ko.utils.unwrapObservable(valueAccessor());
-
-        var options = {};
-        for (var property in ko.bindingHandlers.clusterer.binders) {
-            var binder = ko.bindingHandlers.clusterer.binders[property];
-            if (binder.onBuildOptions) {
-                binder.onBuildOptions(bindingContext, bindings, options, ko);
-            }
+        ko.utils.domData.set(marker, 'clusterer', newClusterer);
+        if (newClusterer) {
+            newClusterer.addMarker(marker);
         }
+    }
 
-        var clusterer = new MarkerClusterer(bindingContext.$map, [], options);
-        for (var property in ko.bindingHandlers.clusterer.binders) {
-            var binder = ko.bindingHandlers.clusterer.binders[property];
-            if (binder.onCreated) {
-                binder.onCreated(bindingContext, bindings, clusterer, ko);
-            }
-        }
+    function removeClusterer(marker) {
+        setClusterer(marker);
+    }
 
-        var name = ko.utils.unwrapObservable(bindings.name) || defaultClustererName;
+    // Add a new binder to the marker binding to handle add and remove from clusterer.
+    ko.bindingHandlers.marker.binders.clusterer = {
+        bind: function (bindingContext, bindings, marker, subscriptions) {
+            var clustererName = ko.utils.unwrapObservable(bindings.clusterer) || defaultClustererName;
 
-        var extension = {};
-        extension[name] = clusterer;
-        var innerBindingContext = bindingContext.extend(extension);
-        ko.applyBindingsToDescendants(innerBindingContext, element);
-
-        return { controlsDescendantBindings: true };
-    },
-    binders: {
-        ignoreHidden: {
-            onBuildOptions: function (bindingContext, bindings, options, ko) {
-                ko.google.maps.utils.assignBindingToOptions(bindings, 'ignoreHidden', options, null);
-            }
-        },
-        gridSize: {
-            onBuildOptions: function (bindingContext, bindings, options, ko) {
-                ko.google.maps.utils.assignBindingToOptions(bindings, 'gridSize', options, null);
-            },
-            onCreated: function (bindingContext, bindings, clusterer, ko) {
-                ko.google.maps.utils.tryObserveBinding(bindings, 'gridSize', function (v) { clusterer.setGridSize(v); });
-            }
-        },
-        maxZoom: {
-            onBuildOptions: function (bindingContext, bindings, options, ko) {
-                ko.google.maps.utils.assignBindingToOptions(bindings, 'maxZoom', options, null);
-            },
-            onCreated: function (bindingContext, bindings, clusterer, ko) {
-                ko.google.maps.utils.tryObserveBinding(bindings, 'maxZoom', function (v) { clusterer.setMaxZoom(v); });
-            }
-        },
-        styles: {
-            onBuildOptions: function (bindingContext, bindings, options, ko) {
-                ko.google.maps.utils.assignBindingToOptions(bindings, 'styles', options, null);
-            },
-            onCreated: function (bindingContext, bindings, clusterer, ko) {
-                ko.google.maps.utils.tryObserveBinding(bindings, 'styles', function (v) {
-                    clusterer.setStyles(v);
-                    clusterer.resetViewport();
-                    clusterer.redraw();
+            var clusterer = bindingContext[clustererName];
+            if (clusterer) {
+                setClusterer(marker, clusterer);
+                subscriptions.add(function () {
+                    removeClusterer(marker);
                 });
             }
-        },
-        calculator: {
-            onBuildOptions: function (bindingContext, bindings, options, ko) {
-                ko.google.maps.utils.assignBindingToOptions(bindings, 'calculator', options, null);
+
+            if (ko.isObservable(bindings.clusterer)) {
+                subscriptions.addKOSubscription(bindings.clusterer.subscribe(function (clustererName) {
+                    if (!clustererName) return;
+
+                    setClusterer(marker, bindingContext[clustererName]);
+                }));
             }
         }
-    }
-};
-ko.virtualElements.allowedBindings.clusterer = true;
-
-ko.bindingHandlers.marker.binders.clusterer = {
-    onCreated: function (bindingContext, bindings, marker, ko) {
-        var clusterer = getClusterer(bindings, bindingContext);
-        if (clusterer) {
-            clusterer.addMarker(marker);
-        }
-    },
-    onRemoved: function (bindingContext, bindings, viewModel, marker, ko) {
-        var clusterer = getClusterer(bindings, bindingContext);
-        if (clusterer) {
-            clusterer.removeMarker(marker);
-        }
-    }
-};
+    };
+})();
