@@ -77,8 +77,12 @@
     };
     ko.virtualElements.allowedBindings.clusterer = true;
 
+    function getClusterer(marker) {
+        return ko.utils.domData.get(marker, 'clusterer');
+    }
+
     function setClusterer(marker, newClusterer) {
-        var oldClusterer = ko.utils.domData.get(marker, 'clusterer');
+        var oldClusterer = getClusterer(marker);
         if (oldClusterer) {
             oldClusterer.removeMarker(marker);
         }
@@ -113,6 +117,19 @@
                     setClusterer(marker, bindingContext[clustererName]);
                 }));
             }
+
+            subscriptions.addGMListener(google.maps.event.addListener(marker, 'visible_changed', function () {
+                var clusterer = getClusterer(marker);
+                var needsRepaint = ko.utils.domData.get(clusterer, 'needsRepaint');
+                if (!needsRepaint) {
+                    ko.utils.domData.set(clusterer, 'needsRepaint', true);
+                    setTimeout(function () {
+                        var clusterer = getClusterer(marker);
+                        clusterer.repaint();
+                        ko.utils.domData.set(clusterer, 'needsRepaint', false);
+                    }, 0);
+                }
+            }));
         }
     };
 })();
