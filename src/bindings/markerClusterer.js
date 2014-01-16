@@ -25,7 +25,7 @@
         },
         binders: {
             ignoreHidden: {
-                createOptions: 'ignoreHidden'
+                createOptions: { name: 'ignoreHidden', type: 'bool' }
             },
             gridSize: {
                 createOptions: 'gridSize',
@@ -98,15 +98,17 @@
 
             subscriptions.addGMListener(google.maps.event.addListener(marker, 'visible_changed', function () {
                 var clusterer = getClusterer(marker);
+                if (!clusterer) return;
+
                 var needsRepaint = ko.utils.domData.get(clusterer, 'needsRepaint');
-                if (!needsRepaint) {
-                    ko.utils.domData.set(clusterer, 'needsRepaint', true);
-                    setTimeout(function () {
-                        var clusterer = getClusterer(marker);
-                        clusterer.repaint();
-                        ko.utils.domData.set(clusterer, 'needsRepaint', false);
-                    }, 0);
-                }
+                if (needsRepaint) return; // Already flagged as needing repaint, so do nothing.
+
+                ko.utils.domData.set(clusterer, 'needsRepaint', true);
+                setTimeout(function () {
+                    var clusterer = getClusterer(marker);
+                    clusterer.repaint();
+                    ko.utils.domData.set(clusterer, 'needsRepaint', false);
+                }, 0);
             }));
         }
     };
