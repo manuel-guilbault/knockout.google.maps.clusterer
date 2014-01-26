@@ -55,49 +55,72 @@
     };
     ko.virtualElements.allowedBindings.clusterer = true;
 
-    function getClusterer(marker) {
+    function getMarkerClusterer(marker) {
         return ko.utils.domData.get(marker, 'clusterer');
     }
 
-    function setClusterer(marker, newClusterer) {
-        var oldClusterer = getClusterer(marker);
+    function setMarkerClusterer(marker, clusterer) {
+        var oldClusterer = getMarkerClusterer(marker);
         if (oldClusterer) {
             oldClusterer.removeMarker(marker);
         }
 
-        ko.utils.domData.set(marker, 'clusterer', newClusterer);
-        if (newClusterer) {
-            newClusterer.addMarker(marker);
+        ko.utils.domData.set(marker, 'clusterer', clusterer);
+        if (clusterer) {
+            clusterer.addMarker(marker);
         }
     }
 
-    function removeClusterer(marker) {
-        setClusterer(marker);
+    function removeMarkerClusterer(marker) {
+        setMarkerClusterer(marker, undefined);
+    }
+
+    function unwrapContextClusterer(name, bindingContext) {
+        if (ko.isObservable(name)) {
+            name = name();
+        } else if (name === undefined) {
+            name = defaultClustererName;
+        }
+
+        if (!name) {
+            return undefined;
+        }
+
+        var clusterer = bindingContext[name];
+        if (!clusterer) {
+            throw new Error("Clusterer '" + name + "' is undefined");
+        }
+
+        return clusterer;
+    }
+
+    function getContextClusterer(name, bindingContext) {
+        if (name) {
+            return bindingContext[name];
+        } else {
+            return undefined;
+        }
     }
 
     // Add a new binder to the marker binding to handle add and remove from clusterer.
     ko.bindingHandlers.marker.binders.clusterer = {
         bind: function (bindingContext, bindings, marker, subscriptions) {
-            var clustererName = ko.utils.unwrapObservable(bindings.clusterer) || defaultClustererName;
+            var clusterer = unwrapContextClusterer(bindings.clusterer, bindingContext);
 
-            var clusterer = bindingContext[clustererName];
-            if (clusterer) {
-                setClusterer(marker, clusterer);
-                subscriptions.add(function () {
-                    removeClusterer(marker);
-                });
-            }
+            setMarkerClusterer(marker, clusterer);
+            subscriptions.add(function () {
+                removeMarkerClusterer(marker);
+            });
 
             if (ko.isObservable(bindings.clusterer)) {
                 subscriptions.addKOSubscription(bindings.clusterer.subscribe(function (clustererName) {
-                    if (!clustererName) return;
-
-                    setClusterer(marker, bindingContext[clustererName]);
+                    var clusterer = getContextClusterer(clustererName, bindingContext);
+                    setMarkerClusterer(marker, clusterer);
                 }));
             }
 
             subscriptions.addGMListener(google.maps.event.addListener(marker, 'visible_changed', function () {
-                var clusterer = getClusterer(marker);
+                var clusterer = getMarkerClusterer(marker);
                 if (!clusterer) return;
 
                 var needsRepaint = ko.utils.domData.get(clusterer, 'needsRepaint');
@@ -105,7 +128,6 @@
 
                 ko.utils.domData.set(clusterer, 'needsRepaint', true);
                 setTimeout(function () {
-                    var clusterer = getClusterer(marker);
                     clusterer.repaint();
                     ko.utils.domData.set(clusterer, 'needsRepaint', false);
                 }, 0);
